@@ -1,192 +1,74 @@
--- ROBLOX STEAL A BRAINROT SCRIPT - GELİŞTİRİLMİŞ, TAM ÇALIŞAN VERSİYON
+-- Advanced Player Protection GUI
+-- Yapan: ChatGPT (Senin isteğin üzerine)
 
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
+local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
+local Frame = Instance.new("Frame", ScreenGui)
+Frame.Size = UDim2.new(0, 200, 0, 260)
+Frame.Position = UDim2.new(0.1, 0, 0.1, 0)
+Frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+Frame.Active = true
+Frame.Draggable = true
 
-local Config = {
-    SpeedBoost = false,
-    SpeedMultiplier = 2,
-    TPUpDistance = 10,
-    InfiniteJump = false,
-    GUIVisible = true,
-}
+local UIListLayout = Instance.new("UIListLayout", Frame)
+UIListLayout.Padding = UDim.new(0, 5)
 
-local originalWalkSpeed = 16
-local tpCooldown = false
-
--- Speed Boost Fonksiyonu
-local function applySpeed()
-    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-        local hum = LocalPlayer.Character.Humanoid
-        if Config.SpeedBoost then
-            hum.WalkSpeed = originalWalkSpeed * Config.SpeedMultiplier
-        else
-            hum.WalkSpeed = originalWalkSpeed
-        end
-    end
+local function makeButton(text, callback)
+    local btn = Instance.new("TextButton", Frame)
+    btn.Size = UDim2.new(1, -10, 0, 40)
+    btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    btn.TextColor3 = Color3.new(1,1,1)
+    btn.Text = text
+    btn.MouseButton1Click:Connect(callback)
+    return btn
 end
 
--- TP Up Fonksiyonu
-local function tpUp()
-    if tpCooldown then return end
-    tpCooldown = true
-    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-        local HRP = LocalPlayer.Character.HumanoidRootPart
-        local target = HRP.CFrame + Vector3.new(0, Config.TPUpDistance, 0)
-        local tween = TweenService:Create(HRP, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {CFrame = target})
-        tween:Play()
-        tween.Completed:Wait()
-    end
-    wait(0.5)
-    tpCooldown = false
-end
-
--- Infinite Jump (Space tuşuna basıldığında)
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    if input.KeyCode == Enum.KeyCode.Space and Config.InfiniteJump then
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-            LocalPlayer.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-        end
+-- Anti-Hit
+local antiHitEnabled = false
+makeButton("Anti-Hit", function()
+    antiHitEnabled = not antiHitEnabled
+    if antiHitEnabled then
+        game.Players.LocalPlayer.Character.Humanoid.PlatformStand = false
+        game.Players.LocalPlayer.Character.Humanoid.StateChanged:Connect(function(_, newState)
+            if antiHitEnabled and newState == Enum.HumanoidStateType.Physics then
+                game.Players.LocalPlayer.Character.Humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+            end
+        end)
     end
 end)
 
--- Karakter yüklendiğinde hız ayarı uygula
-local function onCharacterAdded(char)
-    wait(1)
-    applySpeed()
-end
-
-LocalPlayer.CharacterAdded:Connect(onCharacterAdded)
-if LocalPlayer.Character then
-    onCharacterAdded(LocalPlayer.Character)
-end
-
--- RunService ile hız sürekli güncelleme
-RunService.Heartbeat:Connect(function()
-    applySpeed()
+-- Anti-Die
+local antiDieEnabled = false
+makeButton("Anti-Die", function()
+    antiDieEnabled = not antiDieEnabled
+    if antiDieEnabled then
+        game:GetService("Players").LocalPlayer.Character.Humanoid.HealthChanged:Connect(function(hp)
+            if antiDieEnabled and hp <= 0 then
+                game.Players.LocalPlayer.Character.Humanoid.Health = 100
+            end
+        end)
+    end
 end)
 
--- GUI Oluşturma
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "BrainrotScriptGUI"
-ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
-
-local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 250, 0, 220)
-MainFrame.Position = UDim2.new(0.5, -125, 0.5, -110)
-MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-MainFrame.BorderSizePixel = 0
-MainFrame.Parent = ScreenGui
-
-local UICorner = Instance.new("UICorner")
-UICorner.CornerRadius = UDim.new(0, 10)
-UICorner.Parent = MainFrame
-
--- Başlık
-local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, 0, 0, 35)
-Title.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.Text = "Brainrot Script (Gelişmiş)"
-Title.Font = Enum.Font.SourceSansBold
-Title.TextSize = 18
-Title.Parent = MainFrame
-
-local function createToggleButton(text, configKey, positionY)
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(1, -20, 0, 40)
-    frame.Position = UDim2.new(0, 10, 0, positionY)
-    frame.BackgroundTransparency = 1
-    frame.Parent = MainFrame
-
-    local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(0.65, 0, 1, 0)
-    label.BackgroundTransparency = 1
-    label.TextColor3 = Color3.new(1,1,1)
-    label.Font = Enum.Font.SourceSans
-    label.TextSize = 16
-    label.Text = text
-    label.TextXAlignment = Enum.TextXAlignment.Left
-    label.Parent = frame
-
-    local button = Instance.new("TextButton")
-    button.Size = UDim2.new(0.3, 0, 0.7, 0)
-    button.Position = UDim2.new(0.68, 0, 0.15, 0)
-    button.BackgroundColor3 = Config[configKey] and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(170, 0, 0)
-    button.TextColor3 = Color3.new(1,1,1)
-    button.Font = Enum.Font.SourceSansBold
-    button.TextSize = 16
-    button.Text = Config[configKey] and "ON" or "OFF"
-    button.Parent = frame
-
-    button.MouseButton1Click:Connect(function()
-        Config[configKey] = not Config[configKey]
-        if Config[configKey] then
-            button.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
-            button.Text = "ON"
-        else
-            button.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
-            button.Text = "OFF"
+-- Infinite Jump
+local infJump = false
+makeButton("Infinite Jump", function()
+    infJump = not infJump
+    local plr = game.Players.LocalPlayer
+    local uis = game:GetService("UserInputService")
+    uis.JumpRequest:Connect(function()
+        if infJump then
+            plr.Character:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping")
         end
     end)
-end
+end)
 
-createToggleButton("Speed Boost", "SpeedBoost", 45)
-createToggleButton("Infinite Jump", "InfiniteJump", 90)
-
--- Speed Multiplier Ayarı
-local speedLabel = Instance.new("TextLabel")
-speedLabel.Size = UDim2.new(1, -20, 0, 30)
-speedLabel.Position = UDim2.new(0, 10, 0, 135)
-speedLabel.BackgroundTransparency = 1
-speedLabel.TextColor3 = Color3.new(1,1,1)
-speedLabel.Font = Enum.Font.SourceSans
-speedLabel.TextSize = 16
-speedLabel.Text = "Speed Multiplier: " .. tostring(Config.SpeedMultiplier)
-speedLabel.TextXAlignment = Enum.TextXAlignment.Left
-speedLabel.Parent = MainFrame
-
-local speedInput = Instance.new("TextBox")
-speedInput.Size = UDim2.new(0.4, 0, 0, 25)
-speedInput.Position = UDim2.new(0.6, 0, 0, 135)
-speedInput.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-speedInput.TextColor3 = Color3.new(1,1,1)
-speedInput.Font = Enum.Font.SourceSans
-speedInput.TextSize = 16
-speedInput.Text = tostring(Config.SpeedMultiplier)
-speedInput.ClearTextOnFocus = false
-speedInput.Parent = MainFrame
-
-speedInput.FocusLost:Connect(function(enterPressed)
-    local val = tonumber(speedInput.Text)
-    if val and val > 0 then
-        Config.SpeedMultiplier = val
-        speedLabel.Text = "Speed Multiplier: " .. tostring(val)
+-- Speed Hack
+local speedEnabled = false
+makeButton("Speed (Toggle)", function()
+    speedEnabled = not speedEnabled
+    if speedEnabled then
+        game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = 100
     else
-        speedInput.Text = tostring(Config.SpeedMultiplier)
+        game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = 16
     end
 end)
-
--- TP Up Butonu
-local tpButton = Instance.new("TextButton")
-tpButton.Size = UDim2.new(0.9, 0, 0, 40)
-tpButton.Position = UDim2.new(0.05, 0, 0, 170)
-tpButton.BackgroundColor3 = Color3.fromRGB(255, 140, 0)
-tpButton.TextColor3 = Color3.new(1,1,1)
-tpButton.Font = Enum.Font.SourceSansBold
-tpButton.TextSize = 18
-tpButton.Text = "TP Up (+" .. tostring(Config.TPUpDistance) .. " studs)"
-tpButton.Parent = MainFrame
-
-tpButton.MouseButton1Click:Connect(function()
-    tpUp()
-end)
-
--- TP Up Mesafe Ayarı (Yanına textbox koyabiliriz istersen)
--- Şimdilik sabit
-
-print("Script başarılı şekilde yüklendi!")
