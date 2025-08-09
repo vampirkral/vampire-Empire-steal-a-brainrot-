@@ -1,74 +1,97 @@
--- Advanced Player Protection GUI
--- Yapan: ChatGPT (Senin isteğin üzerine)
+-- Roblox Gelişmiş GUI (Anti-Die, Anti-Hit, Infinite Jump, Speed)
+-- Eğitim ve test amaçlıdır!
 
+-- GUI Oluşturma
 local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
 local Frame = Instance.new("Frame", ScreenGui)
-Frame.Size = UDim2.new(0, 200, 0, 260)
+Frame.Size = UDim2.new(0, 200, 0, 250)
 Frame.Position = UDim2.new(0.1, 0, 0.1, 0)
 Frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-Frame.Active = true
-Frame.Draggable = true
 
-local UIListLayout = Instance.new("UIListLayout", Frame)
-UIListLayout.Padding = UDim.new(0, 5)
-
-local function makeButton(text, callback)
+local function createButton(text, positionY)
     local btn = Instance.new("TextButton", Frame)
-    btn.Size = UDim2.new(1, -10, 0, 40)
-    btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    btn.TextColor3 = Color3.new(1,1,1)
+    btn.Size = UDim2.new(1, 0, 0, 40)
+    btn.Position = UDim2.new(0, 0, 0, positionY)
     btn.Text = text
-    btn.MouseButton1Click:Connect(callback)
+    btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Font = Enum.Font.SourceSansBold
+    btn.TextSize = 18
     return btn
 end
 
--- Anti-Hit
-local antiHitEnabled = false
-makeButton("Anti-Hit", function()
-    antiHitEnabled = not antiHitEnabled
-    if antiHitEnabled then
-        game.Players.LocalPlayer.Character.Humanoid.PlatformStand = false
-        game.Players.LocalPlayer.Character.Humanoid.StateChanged:Connect(function(_, newState)
-            if antiHitEnabled and newState == Enum.HumanoidStateType.Physics then
-                game.Players.LocalPlayer.Character.Humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
-            end
-        end)
-    end
+-- Özellikler
+local antiDie = false
+local antiHit = false
+local infiniteJump = false
+local speedEnabled = false
+local normalSpeed = 16
+local fastSpeed = 50
+
+-- ANTI-DIE
+local btnAntiDie = createButton("Anti-Die (Kapalı)", 0)
+btnAntiDie.MouseButton1Click:Connect(function()
+    antiDie = not antiDie
+    btnAntiDie.Text = "Anti-Die ("..(antiDie and "Açık" or "Kapalı")..")"
 end)
 
--- Anti-Die
-local antiDieEnabled = false
-makeButton("Anti-Die", function()
-    antiDieEnabled = not antiDieEnabled
-    if antiDieEnabled then
-        game:GetService("Players").LocalPlayer.Character.Humanoid.HealthChanged:Connect(function(hp)
-            if antiDieEnabled and hp <= 0 then
-                game.Players.LocalPlayer.Character.Humanoid.Health = 100
+-- ANTI-HIT
+local btnAntiHit = createButton("Anti-Hit (Kapalı)", 45)
+btnAntiHit.MouseButton1Click:Connect(function()
+    antiHit = not antiHit
+    btnAntiHit.Text = "Anti-Hit ("..(antiHit and "Açık" or "Kapalı")..")"
+end)
+
+-- INFINITE JUMP
+local btnInfJump = createButton("Infinite Jump (Kapalı)", 90)
+btnInfJump.MouseButton1Click:Connect(function()
+    infiniteJump = not infiniteJump
+    btnInfJump.Text = "Infinite Jump ("..(infiniteJump and "Açık" or "Kapalı")..")"
+end)
+
+-- SPEED
+local btnSpeed = createButton("Speed (Kapalı)", 135)
+btnSpeed.MouseButton1Click:Connect(function()
+    speedEnabled = not speedEnabled
+    btnSpeed.Text = "Speed ("..(speedEnabled and "Açık" or "Kapalı")..")"
+end)
+
+-- Script Döngüsü
+game:GetService("RunService").RenderStepped:Connect(function()
+    local plr = game.Players.LocalPlayer
+    local char = plr.Character
+    if char and char:FindFirstChild("Humanoid") then
+        local hum = char.Humanoid
+
+        -- Anti-Die (Health sabitle + reset önleme + void koruma)
+        if antiDie then
+            hum.Health = hum.MaxHealth
+            hum.BreakJointsOnDeath = false
+            if char:FindFirstChild("HumanoidRootPart") and char.HumanoidRootPart.Position.Y < -5 then
+                char.HumanoidRootPart.CFrame = CFrame.new(0, 10, 0)
             end
-        end)
+        end
+
+        -- Anti-Hit (Knockback engelleme)
+        if antiHit and char:FindFirstChild("HumanoidRootPart") then
+            char.HumanoidRootPart.Velocity = Vector3.new(0, char.HumanoidRootPart.Velocity.Y, 0)
+        end
+
+        -- Speed
+        if speedEnabled then
+            hum.WalkSpeed = fastSpeed
+        else
+            hum.WalkSpeed = normalSpeed
+        end
     end
 end)
 
 -- Infinite Jump
-local infJump = false
-makeButton("Infinite Jump", function()
-    infJump = not infJump
-    local plr = game.Players.LocalPlayer
-    local uis = game:GetService("UserInputService")
-    uis.JumpRequest:Connect(function()
-        if infJump then
-            plr.Character:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping")
+game:GetService("UserInputService").JumpRequest:Connect(function()
+    if infiniteJump then
+        local plr = game.Players.LocalPlayer
+        if plr.Character and plr.Character:FindFirstChild("Humanoid") then
+            plr.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
         end
-    end)
-end)
-
--- Speed Hack
-local speedEnabled = false
-makeButton("Speed (Toggle)", function()
-    speedEnabled = not speedEnabled
-    if speedEnabled then
-        game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = 100
-    else
-        game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = 16
     end
 end)
