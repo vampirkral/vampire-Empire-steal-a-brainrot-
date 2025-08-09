@@ -1,0 +1,162 @@
+--[[
+    Roblox Steal a Brainrot Script (PRO Versiyon)
+    - FPS & Ping göstergesi
+    - Kaydırılabilir GUI
+    - Ayar kaydetme
+    - Shift ile geçici hız
+    - TP cooldown
+    - Modern tema
+]]
+
+-- Servisler
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local HttpService = game:GetService("HttpService")
+
+-- CONFIG (Kaydedilebilir)
+local Config = {
+    SpeedBoost = false,
+    SpeedMultiplier = 2,
+    TPUp = false,
+    TPUpDistance = 10,
+    InfiniteJump = false,
+    GUIVisible = true
+}
+
+-- Verileri kaydetmek için dosya ismi (executor destekliyorsa)
+local configFile = "brainrot_config.json"
+
+-- Ayarları yükle
+pcall(function()
+    if isfile and isfile(configFile) then
+        Config = HttpService:JSONDecode(readfile(configFile))
+    end
+end)
+
+-- Ayarları kaydet
+local function saveConfig()
+    pcall(function()
+        if writefile then
+            writefile(configFile, HttpService:JSONEncode(Config))
+        end
+    end)
+end
+
+-- Orijinal hız
+local originalWalkSpeed = 16
+local shiftBoost = false
+local tpCooldown = false
+
+-- Speed Boost
+local function applySpeed()
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+        local hum = LocalPlayer.Character.Humanoid
+        if Config.SpeedBoost or shiftBoost then
+            hum.WalkSpeed = originalWalkSpeed * Config.SpeedMultiplier
+        else
+            hum.WalkSpeed = originalWalkSpeed
+        end
+    end
+end
+
+-- TP Up
+local function tpUp()
+    if tpCooldown then return end
+    tpCooldown = true
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        local HRP = LocalPlayer.Character.HumanoidRootPart
+        local target = HRP.CFrame + Vector3.new(0, Config.TPUpDistance, 0)
+        TweenService:Create(HRP, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {CFrame = target}):Play()
+    end
+    wait(0.5) -- Cooldown süresi
+    tpCooldown = false
+end
+
+-- Infinite Jump
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if not gameProcessed and input.KeyCode == Enum.KeyCode.Space and Config.InfiniteJump then
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+            LocalPlayer.Character.Humanoid:ChangeState("Jumping")
+        end
+    end
+end)
+
+-- Shift ile geçici Speed Boost
+UserInputService.InputBegan:Connect(function(input, gpe)
+    if not gpe and input.KeyCode == Enum.KeyCode.LeftShift then
+        shiftBoost = true
+    end
+end)
+UserInputService.InputEnded:Connect(function(input, gpe)
+    if input.KeyCode == Enum.KeyCode.LeftShift then
+        shiftBoost = false
+    end
+end)
+
+-- FPS ve Ping Göstergesi
+local fps, ping = 0, 0
+RunService.RenderStepped:Connect(function(dt)
+    fps = math.floor(1 / dt)
+    if LocalPlayer and LocalPlayer:GetNetworkPing() then
+        ping = math.floor(LocalPlayer:GetNetworkPing() * 1000)
+    end
+end)
+
+-- GUI
+local ScreenGui = Instance.new("ScreenGui", LocalPlayer:WaitForChild("PlayerGui"))
+local MainFrame = Instance.new("ScrollingFrame")
+MainFrame.Size = UDim2.new(0, 250, 0, 300)
+MainFrame.Position = UDim2.new(0.5, -125, 0.5, -150)
+MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+MainFrame.BorderSizePixel = 0
+MainFrame.CanvasSize = UDim2.new(0, 0, 0, 500)
+MainFrame.ScrollBarThickness = 4
+MainFrame.Parent = ScreenGui
+
+local corner = Instance.new("UICorner", MainFrame)
+corner.CornerRadius = UDim.new(0, 8)
+
+-- FPS/Ping Label
+local InfoLabel = Instance.new("TextLabel", MainFrame)
+InfoLabel.Size = UDim2.new(1, 0, 0, 25)
+InfoLabel.TextColor3 = Color3.new(1,1,1)
+InfoLabel.BackgroundTransparency = 1
+InfoLabel.TextSize = 14
+InfoLabel.Text = "FPS: 0 | Ping: 0ms"
+RunService.RenderStepped:Connect(function()
+    InfoLabel.Text = ("FPS: %d | Ping: %dms"):format(fps, ping)
+end)
+
+-- Toggle Buton Fonksiyonu
+local function createToggle(name, cfgKey, y)
+    local btn = Instance.new("TextButton", MainFrame)
+    btn.Size = UDim2.new(0.9, 0, 0, 30)
+    btn.Position = UDim2.new(0.05, 0, 0, y)
+    btn.BackgroundColor3 = Config[cfgKey] and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(200, 0, 0)
+    btn.Text = name .. ": " .. (Config[cfgKey] and "ON" or "OFF")
+    btn.TextColor3 = Color3.new(1,1,1)
+    btn.MouseButton1Click:Connect(function()
+        Config[cfgKey] = not Config[cfgKey]
+        btn.BackgroundColor3 = Config[cfgKey] and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(200, 0, 0)
+        btn.Text = name .. ": " .. (Config[cfgKey] and "ON" or "OFF")
+        saveConfig()
+    end)
+end
+
+createToggle("Speed Boost", "SpeedBoost", 40)
+createToggle("Infinite Jump", "InfiniteJump", 80)
+
+-- TP Up Button
+local tpBtn = Instance.new("TextButton", MainFrame)
+tpBtn.Size = UDim2.new(0.9, 0, 0, 30)
+tpBtn.Position = UDim2.new(0.05, 0, 0, 120)
+tpBtn.BackgroundColor3 = Color3.fromRGB(255, 140, 0)
+tpBtn.Text = "TP Up (+"..Config.TPUpDistance.." studs)"
+tpBtn.TextColor3 = Color3.new(1,1,1)
+tpBtn.MouseButton1Click:Connect(tpUp)
+
+-- Ana döngü
+      RunService.Heartbeat:Connect(applySpeed)
